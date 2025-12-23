@@ -31,10 +31,17 @@ def root():
 
 @app.post("/trades")
 def create_trade(trade: Trade):
-    # Send data to Supabase trades table
-    response = supabase.table("trades").insert(trade.dict()).execute()
-    
-    if response.data:
-        return {"message": "Trade saved!", "id": response.data[0]["id"]}
-    else:
-        raise HTTPException(status_code=500, detail="Failed to save trade")
+    try:
+        data = trade.dict(exclude_unset=True)  # Only send filled fields
+        response = supabase.table("trades").insert(data).execute()
+        
+        if hasattr(response, 'error') and response.error:
+            raise HTTPException(status_code=400, detail=str(response.error))
+        
+        if response.data:
+            return {"message": "Trade saved successfully!", "id": response.data[0]["id"]}
+        else:
+            raise HTTPException(status_code=400, detail="No data returned from Supabase")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
